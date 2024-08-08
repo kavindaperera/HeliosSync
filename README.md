@@ -24,16 +24,21 @@ HeliosSync is a Java-based Cloud Function designed to synchronize data from Goog
     git clone https://github.com/kavindaperera/HeliosSync.git
     cd helios-sync
     ```
+2. **Deployment View**
 
-2. **Configure Environment Variables**
+Below is the deployment view of the HeliosSync :
 
-    Set the following environment variables in your deployment environment:
+![Deployment View](uml/deployment.view.uml.png)    
+
+2. **Configures**
+
+    Please refer to the `config.properties` file for configuring the tool.
 
     ```bash
-    export REDIS_HOST=your-redis-host
-    export REDIS_PORT=6379
-    export BIGQUERY_QUERY="SELECT * FROM `your_project.your_dataset.your_table`"
-    export GCS_BUCKET=your-gcs-bucket
+        redis.host=localhost
+        redis.port=6379
+        bigquery.project.id=your-project-id
+        bigquery.query=SELECT * FROM `your_project.your_dataset.your_table`
     ```
 
 3. **Build the Project**
@@ -54,8 +59,7 @@ HeliosSync is a Java-based Cloud Function designed to synchronize data from Goog
         --runtime java11 \
         --trigger-http \
         --allow-unauthenticated \
-        --region YOUR_REGION \
-        --set-env-vars REDIS_HOST=your-redis-host,REDIS_PORT=6379,BIGQUERY_QUERY="SELECT * FROM `your_project.your_dataset.your_table`",GCS_BUCKET=your-gcs-bucket
+        --region YOUR_REGION
     ```
 
 ## Usage 📤
