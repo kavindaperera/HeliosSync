@@ -22,38 +22,56 @@ public class HeliosSync implements HttpFunction {
     @Override
     public void service(HttpRequest request, HttpResponse response) throws Exception {
 
+        logger.info("Trigger: {}", request.getFirstHeader("Trigger"));
+
         String trigger = request.getFirstHeader("Trigger").orElse("BigQuery");
 
         Config config = new Config();
-        config.useSingleServer().setAddress("redis://" + REDIS_HOST + ":" + REDIS_PORT);
+        String redisUrl = "redis://" + REDIS_HOST + ":" + REDIS_PORT;
+        config.useSingleServer().setAddress(redisUrl);
 
-        RedissonClient redisson = Redisson.create(config);
         try {
-            DataLoader dataLoader = null;
 
-            switch (trigger) {
-                case "BigQuery":
-                    dataLoader = new BigQueryDataLoader(redisson);
-                case "GCS":
-                    response.setStatusCode(400);
-                    response.getWriter().write("Unsupported trigger type: " + trigger);
-                default:
-                    response.setStatusCode(400);
-                    response.getWriter().write("Unsupported trigger type: " + trigger);
-            }
+            RedissonClient redisson = Redisson.create(config);
 
-            if (dataLoader != null) {
-                dataLoader.loadData();
-                response.setStatusCode(200);
-                response.getWriter().write("Data processed successfully.");
+            logger.info("Connected: {}", redisUrl);
+
+            try {
+                DataLoader dataLoader = null;
+
+                switch (trigger) {
+                    case "BigQuery":
+                        dataLoader = new BigQueryDataLoader(redisson);
+                        break;
+                    case "GCS":
+                        response.setStatusCode(400);
+                        response.getWriter().write("Unsupported trigger type: " + trigger);
+                        break;
+                    default:
+                        response.setStatusCode(400);
+                        response.getWriter().write("Unsupported trigger type: " + trigger);
+                        break;
+                }
+
+                if (dataLoader != null) {
+                    dataLoader.loadData();
+                    response.setStatusCode(200);
+                    response.getWriter().write("Data processed successfully.");
+                }
+
+            } catch (Exception e) {
+                logger.error("Error processing data: ", e);
+                response.setStatusCode(500);
+                response.getWriter().write("Error processing data: " + e.getMessage());
+            } finally {
+                redisson.shutdown();
             }
 
         } catch (Exception e) {
-            logger.error("Error processing data: ", e);
+            logger.error("Error connecting to redis : {} : ", redisUrl, e);
             response.setStatusCode(500);
-            response.getWriter().write("Error processing data: " + e.getMessage());
-        } finally {
-            redisson.shutdown();
+            response.getWriter().write("Error connecting to redis: " + redisUrl);
         }
+
     }
 }

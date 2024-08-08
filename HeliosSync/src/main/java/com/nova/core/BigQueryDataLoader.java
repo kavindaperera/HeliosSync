@@ -6,7 +6,13 @@ import com.google.cloud.bigquery.BigQueryOptions;
 import com.google.cloud.bigquery.QueryJobConfiguration;
 import com.google.cloud.bigquery.TableResult;
 import com.nova.config.ConfigLoader;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
 import org.redisson.api.RedissonClient;
+
+import java.io.IOException;
+import java.io.StringWriter;
+import java.time.LocalDate;
 
 public class BigQueryDataLoader extends DataLoader {
 
@@ -25,19 +31,42 @@ public class BigQueryDataLoader extends DataLoader {
             return;
         }
 
-        BigQuery bigquery = BigQueryOptions.newBuilder()
-                .setProjectId(BIGQUERY_PROJECT_ID)
-                .build()
-                .getService();
-
-        QueryJobConfiguration queryConfig = QueryJobConfiguration.newBuilder(BIGQUERY_QUERY).build();
-
         try {
+
+            BigQuery bigquery = BigQueryOptions.newBuilder()
+                    .setProjectId(BIGQUERY_PROJECT_ID)
+                    .build()
+                    .getService();
+
+            QueryJobConfiguration queryConfig = QueryJobConfiguration.newBuilder(BIGQUERY_QUERY).build();
+
             TableResult result = bigquery.query(queryConfig);
-            result.iterateAll().forEach(row -> {
-                redisson.getBucket(row.get("id").getStringValue()).set(row.get("value").getStringValue());
-            });
-            logger.info("Data loaded from BigQuery to Redis.");
+
+            // Convert query results to CSV format
+            StringWriter stringWriter = new StringWriter();
+            CSVFormat csvFormat = CSVFormat.Builder.create(CSVFormat.DEFAULT)
+                    .setHeader("name", "age")
+                    .build();
+
+            try (CSVPrinter csvPrinter = new CSVPrinter(stringWriter, csvFormat)) {
+                result.iterateAll().forEach(row -> {
+                    try {
+                        csvPrinter.printRecord(row.get("name").getStringValue(), row.get("age").getStringValue());
+                    } catch (IOException e) {
+                        logger.error("Error writing record to CSV: ", e);
+                    }
+                });
+            }
+
+            // Get the current date and use it as the Redis key
+            String currentDate = LocalDate.now().toString();
+            String csvData = stringWriter.toString();
+
+            // Store the CSV data in Redis
+            redisson.getBucket(currentDate).set(csvData);
+
+            logger.info("Data loaded from BigQuery to Redis with key: {}", currentDate);
+
         } catch (Exception e) {
             logger.error("Error loading data from BigQuery: ", e);
         }
