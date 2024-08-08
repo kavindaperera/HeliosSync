@@ -5,11 +5,13 @@ import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryOptions;
 import com.google.cloud.bigquery.QueryJobConfiguration;
 import com.google.cloud.bigquery.TableResult;
+import com.nova.config.ConfigLoader;
 import org.redisson.api.RedissonClient;
 
 public class BigQueryDataLoader extends DataLoader {
 
-    private static final String BIGQUERY_QUERY = System.getenv("BIGQUERY_QUERY");
+    private static final String BIGQUERY_PROJECT_ID = ConfigLoader.get("bigquery.project.id");
+    private static final String BIGQUERY_QUERY = ConfigLoader.get("bigquery.query");
 
     public BigQueryDataLoader(RedissonClient redisson) {
         super(redisson);
@@ -17,7 +19,17 @@ public class BigQueryDataLoader extends DataLoader {
 
     @Override
     public void loadData() {
-        BigQuery bigquery = BigQueryOptions.getDefaultInstance().getService();
+
+        if (BIGQUERY_PROJECT_ID == null || BIGQUERY_QUERY == null) {
+            logger.error("BigQuery project ID or query not specified in environment variables.");
+            return;
+        }
+
+        BigQuery bigquery = BigQueryOptions.newBuilder()
+                .setProjectId(BIGQUERY_PROJECT_ID)
+                .build()
+                .getService();
+
         QueryJobConfiguration queryConfig = QueryJobConfiguration.newBuilder(BIGQUERY_QUERY).build();
 
         try {
