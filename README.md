@@ -32,16 +32,33 @@ Below is the deployment view of the HeliosSync :
 
 2. **Configures**
 
-    Please refer to the `config.properties` file for configuring the tool.
+The configuration is stored in `redisson-config.yml` for Redis and a separate `config.properties` for application-specific settings. 
+Both files should be placed in the src/main/resources directory of your project.
 
-    ```bash
-        redis.host=localhost
-        redis.port=6379
-        bigquery.project.id=your-project-id
-        bigquery.query=SELECT * FROM `your_project.your_dataset.your_table`
-    ```
+`redisson-config.yml`
 
-3. **Build the Project**
+This file contains the configuration for connecting to Redis.
+
+```
+# Redis server configuration
+singleServerConfig:
+  address: "redis://127.0.0.1:6379"
+  password: null
+  database: 0
+  connectionPoolSize: 64
+  connectionMinimumIdleSize: 10
+```
+
+`config.properties`
+
+This file includes BigQuery or GCS-specific settings and other application configurations.
+
+```
+bigquery.project.id=your-project-id
+bigquery.query=SELECT * FROM `your_project.your_dataset.your_table`
+```
+
+4. **Build the Project**
 
     Use Maven to build the project:
 
@@ -49,7 +66,7 @@ Below is the deployment view of the HeliosSync :
     mvn clean package
     ```
 
-4. **Deploy the Cloud Function**
+5. **Deploy the Cloud Function**
 
     Deploy the Cloud Function using the Google Cloud CLI:
 
