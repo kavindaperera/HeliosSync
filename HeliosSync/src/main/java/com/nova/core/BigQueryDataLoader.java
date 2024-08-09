@@ -1,10 +1,7 @@
 package com.nova.core;
 
 
-import com.google.cloud.bigquery.BigQuery;
-import com.google.cloud.bigquery.BigQueryOptions;
-import com.google.cloud.bigquery.QueryJobConfiguration;
-import com.google.cloud.bigquery.TableResult;
+import com.google.cloud.bigquery.*;
 import com.nova.config.ConfigLoader;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
@@ -13,12 +10,29 @@ import org.redisson.api.RedissonClient;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
+/**
+ * {@code BigQueryDataLoader} is a class responsible for loading data from Google BigQuery
+ * and storing it as CSV in a Redis database.
+ * <p>
+ * This class retrieves the BigQuery project ID and query from the configuration, executes
+ * the query, converts the results to CSV format, and stores the CSV data in Redis using
+ * the current date as the key.
+ * </p>
+ */
 public class BigQueryDataLoader extends DataLoader {
 
     private static final String BIGQUERY_PROJECT_ID = ConfigLoader.get("bigquery.project.id");
     private static final String BIGQUERY_QUERY = ConfigLoader.get("bigquery.query");
 
+    /**
+     * Constructs a {@code BigQueryDataLoader} with the specified Redisson client.
+     *
+     * @param redisson the Redisson client used to interact with Redis
+     */
     public BigQueryDataLoader(RedissonClient redisson) {
         super(redisson);
     }
@@ -26,32 +40,42 @@ public class BigQueryDataLoader extends DataLoader {
     @Override
     public void loadData() {
 
+        // Validate configuration
         if (BIGQUERY_PROJECT_ID == null || BIGQUERY_QUERY == null) {
             logger.error("BigQuery project ID or query not specified in environment variables.");
             return;
         }
 
         try {
-
+            // Initialize BigQuery client
             BigQuery bigquery = BigQueryOptions.newBuilder()
                     .setProjectId(BIGQUERY_PROJECT_ID)
                     .build()
                     .getService();
 
+            // Execute BigQuery query
             QueryJobConfiguration queryConfig = QueryJobConfiguration.newBuilder(BIGQUERY_QUERY).build();
 
             TableResult result = bigquery.query(queryConfig);
 
+            // Get column names from the query result
+            List<String> headers = Objects.requireNonNull(result.getSchema()).getFields().stream()
+                    .map(Field::getName)
+                    .toList();
+
             // Convert query results to CSV format
             StringWriter stringWriter = new StringWriter();
             CSVFormat csvFormat = CSVFormat.Builder.create(CSVFormat.DEFAULT)
-                    .setHeader("name", "age")
+                    .setHeader(headers.toArray(new String[0]))
                     .build();
 
             try (CSVPrinter csvPrinter = new CSVPrinter(stringWriter, csvFormat)) {
                 result.iterateAll().forEach(row -> {
                     try {
-                        csvPrinter.printRecord(row.get("name").getStringValue(), row.get("age").getStringValue());
+                        List<String> values = headers.stream()
+                                .map(header -> row.get(header).getStringValue())
+                                .collect(Collectors.toList());
+                        csvPrinter.printRecord(values);
                     } catch (IOException e) {
                         logger.error("Error writing record to CSV: ", e);
                     }

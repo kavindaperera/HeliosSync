@@ -3,7 +3,6 @@ package com.nova;
 import com.google.cloud.functions.HttpFunction;
 import com.google.cloud.functions.HttpRequest;
 import com.google.cloud.functions.HttpResponse;
-import com.nova.config.ConfigLoader;
 import com.nova.core.BigQueryDataLoader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -12,40 +11,47 @@ import org.redisson.api.RedissonClient;
 import org.redisson.config.Config;
 import com.nova.core.DataLoader;
 
+import java.io.IOException;
+
+/**
+ * {@code HeliosSync} is a Google Cloud Function that handles HTTP requests to trigger data loading processes.
+ * <p>
+ * This class implements the {@link HttpFunction} interface and uses the Redisson client to interact with a Redis
+ * database. Based on the value of the "Trigger" header in the HTTP request, it will instantiate the appropriate
+ * {@link DataLoader} implementation and execute the data loading process.
+ * </p>
+ */
 public class HeliosSync implements HttpFunction {
 
     private static final Logger logger = LogManager.getLogger(HeliosSync.class);
 
-    private static final String REDIS_HOST = ConfigLoader.get("redis.host");
-    private static final int REDIS_PORT = Integer.parseInt(ConfigLoader.get("redis.port"));
-
     @Override
     public void service(HttpRequest request, HttpResponse response) throws Exception {
 
-        logger.info("Trigger: {}", request.getFirstHeader("Trigger"));
-
         String trigger = request.getFirstHeader("Trigger").orElse("BigQuery");
 
-        Config config = new Config();
-        String redisUrl = "redis://" + REDIS_HOST + ":" + REDIS_PORT;
-        config.useSingleServer().setAddress(redisUrl);
+        logger.info("Trigger: {}", trigger);
+
+        RedissonClient redisson = null;
 
         try {
+            redisson = createRedissonClient();
+            logger.info("Connected: {}", redisson.getConfig().toYAML());
+        } catch (Exception e) {
+            logger.error("Error connecting to redis : ", e);
+            response.setStatusCode(500);
+            response.getWriter().write("Error connecting to redis");
+        }
 
-            RedissonClient redisson = Redisson.create(config);
-
-            logger.info("Connected: {}", redisUrl);
+        if (redisson != null) {
 
             try {
+
                 DataLoader dataLoader = null;
 
                 switch (trigger) {
                     case "BigQuery":
                         dataLoader = new BigQueryDataLoader(redisson);
-                        break;
-                    case "GCS":
-                        response.setStatusCode(400);
-                        response.getWriter().write("Unsupported trigger type: " + trigger);
                         break;
                     default:
                         response.setStatusCode(400);
@@ -63,15 +69,22 @@ public class HeliosSync implements HttpFunction {
                 logger.error("Error processing data: ", e);
                 response.setStatusCode(500);
                 response.getWriter().write("Error processing data: " + e.getMessage());
-            } finally {
+            }  finally {
                 redisson.shutdown();
             }
-
-        } catch (Exception e) {
-            logger.error("Error connecting to redis : {} : ", redisUrl, e);
-            response.setStatusCode(500);
-            response.getWriter().write("Error connecting to redis: " + redisUrl);
         }
 
     }
+
+    /**
+     * Creates and configures a Redisson client from the YAML configuration file.
+     *
+     * @return the configured Redisson client
+     * @throws IOException if there is an error reading the configuration file
+     */
+    private RedissonClient createRedissonClient() throws IOException {
+        Config config = Config.fromYAML(HttpFunction.class.getClassLoader().getResource("redisson-config.yml"));
+        return Redisson.create(config);
+    }
+
 }
