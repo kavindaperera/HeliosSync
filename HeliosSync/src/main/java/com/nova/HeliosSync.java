@@ -3,13 +3,15 @@ package com.nova;
 import com.google.cloud.functions.HttpFunction;
 import com.google.cloud.functions.HttpRequest;
 import com.google.cloud.functions.HttpResponse;
+import com.nova.config.ConfigLoader;
 import com.nova.core.BigQueryDataLoader;
+import com.nova.core.DataLoader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.redisson.Redisson;
 import org.redisson.api.RedissonClient;
 import org.redisson.config.Config;
-import com.nova.core.DataLoader;
+import org.redisson.config.SingleServerConfig;
 
 import java.io.IOException;
 
@@ -36,7 +38,6 @@ public class HeliosSync implements HttpFunction {
 
         try {
             redisson = createRedissonClient();
-            logger.info("Connected: {}", redisson.getConfig().toYAML());
         } catch (Exception e) {
             logger.error("Error connecting to redis : ", e);
             response.setStatusCode(500);
@@ -44,9 +45,7 @@ public class HeliosSync implements HttpFunction {
         }
 
         if (redisson != null) {
-
             try {
-
                 DataLoader dataLoader = null;
 
                 switch (trigger) {
@@ -69,21 +68,21 @@ public class HeliosSync implements HttpFunction {
                 logger.error("Error processing data: ", e);
                 response.setStatusCode(500);
                 response.getWriter().write("Error processing data: " + e.getMessage());
-            }  finally {
+            } finally {
                 redisson.shutdown();
             }
         }
 
     }
 
-    /**
-     * Creates and configures a Redisson client from the YAML configuration file.
-     *
-     * @return the configured Redisson client
-     * @throws IOException if there is an error reading the configuration file
-     */
-    private RedissonClient createRedissonClient() throws IOException {
-        Config config = Config.fromYAML(HttpFunction.class.getClassLoader().getResource("redisson-config.yml"));
+    private static RedissonClient createRedissonClient() throws IOException {
+        Config config = new Config();
+        SingleServerConfig serverConfig = config.useSingleServer().setAddress(ConfigLoader.get("redisson.address"));
+        String password = ConfigLoader.get("redisson.password");
+        if (password != null && !password.isEmpty()) {
+            serverConfig.setPassword(password);
+        }
+        logger.info("Connecting: {}", config.toJSON());
         return Redisson.create(config);
     }
 
