@@ -35,27 +35,15 @@ Below is the deployment view of the HeliosSync :
 The configuration is stored in `redisson-config.yml` for Redis and a separate `config.properties` for application-specific settings. 
 Both files should be placed in the src/main/resources directory of your project.
 
-`redisson-config.yml`
-
-This file contains the configuration for connecting to Redis.
-
-```
-# Redis server configuration
-singleServerConfig:
-  address: "redis://127.0.0.1:6379"
-  password: null
-  database: 0
-  connectionPoolSize: 64
-  connectionMinimumIdleSize: 10
-```
-
 `config.properties`
 
-This file includes BigQuery or GCS-specific settings and other application configurations.
+This file includes settings and other application configurations.
 
 ```
-bigquery.project.id=your-project-id
-bigquery.query=SELECT * FROM `your_project.your_dataset.your_table`
+redisson.address=redis://10.0.0.3:6379
+redisson.password=
+bigquery.project.id=first-smithy-431916-t1
+bigquery.query=SELECT cust_id, account_no, key_indicator FROM `first-smithy-431916-t1.helios.customer` LIMIT 1000
 ```
 
 4. **Build the Project**
