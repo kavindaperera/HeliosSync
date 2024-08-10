@@ -127,7 +127,7 @@
                 <configuration>
                     <archive>
                         <manifestEntries>
-                            <Main-Class>com.nova.HeliosSync</Main-Class>
+                            <Main-Class>com.nova.sync.HeliosSync</Main-Class>
                         </manifestEntries>
                     </archive>
                     <descriptorRefs>

@@ -1,8 +1,9 @@
-package com.nova.core;
+package com.nova.sync.loader;
 
 
 import com.google.cloud.bigquery.*;
-import com.nova.config.ConfigLoader;
+import com.nova.config.Settings;
+import com.nova.core.DataLoader;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.redisson.api.RedissonClient;
@@ -25,8 +26,8 @@ import java.util.stream.Collectors;
  */
 public class BigQueryDataLoader extends DataLoader {
 
-    private static final String BIGQUERY_PROJECT_ID = ConfigLoader.get("bigquery.project.id");
-    private static final String BIGQUERY_QUERY = ConfigLoader.get("bigquery.query");
+    private static final String BIGQUERY_PROJECT_ID = Settings.get("bigquery.project.id");
+    private static final String BIGQUERY_QUERY = Settings.get("bigquery.query");
 
     /**
      * Constructs a {@code BigQueryDataLoader} with the specified Redisson client.

@@ -6,7 +6,6 @@ import org.redisson.api.RedissonClient;
 
 /**
  * {@code DataLoader} is an abstract base class for loading data from various sources
- * and storing it in a Redis database.
  * <p>
  * This class provides a common interface for different types of data loaders,
  * with a logger for logging messages and a Redisson client for interacting with Redis.

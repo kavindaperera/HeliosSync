@@ -1,11 +1,11 @@
-package com.nova;
+package com.nova.sync;
 
 import com.google.cloud.functions.HttpFunction;
 import com.google.cloud.functions.HttpRequest;
 import com.google.cloud.functions.HttpResponse;
-import com.nova.config.ConfigLoader;
-import com.nova.core.BigQueryDataLoader;
+import com.nova.config.Settings;
 import com.nova.core.DataLoader;
+import com.nova.sync.loader.BigQueryDataLoader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.redisson.Redisson;
@@ -77,8 +77,8 @@ public class HeliosSync implements HttpFunction {
 
     private static RedissonClient createRedissonClient() throws IOException {
         Config config = new Config();
-        SingleServerConfig serverConfig = config.useSingleServer().setAddress(ConfigLoader.get("redisson.address"));
-        String password = ConfigLoader.get("redisson.password");
+        SingleServerConfig serverConfig = config.useSingleServer().setAddress(Settings.get("redisson.address"));
+        String password = Settings.get("redisson.password");
         if (password != null && !password.isEmpty()) {
             serverConfig.setPassword(password);
         }
